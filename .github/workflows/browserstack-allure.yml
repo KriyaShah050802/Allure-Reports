@@ -1,7 +1,7 @@
 name: BrowserStack Status → Allure Report
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch: {}  # This triggers manually via GitHub API or UI
 
 jobs:
   browserstack-status:
@@ -25,7 +25,7 @@ jobs:
 
       - name: Fetch BrowserStack Status
         run: |
-          curl -s "https://lcnc-api.browserstack.com/api/v1/builds/n9x35l1gzckg2qdef2baqj7ymxtmpmqe5ytgxv4s/status" -o response.json
+          curl -s "https://lcnc-api.browserstack.com/api/v1/builds/mgwdcnilseowki2zq4ov8wycdrbrr8rkcqpvunjn/status" -o response.json
 
       - name: Convert Response to Allure Format
         run: |

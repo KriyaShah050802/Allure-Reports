@@ -1,0 +1,79 @@
+name: BrowserStack Status → Allure Report
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  browserstack-status:
+    name: Generate Allure Report
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Install jq and Allure CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install jq -y
+          curl -o allure.tgz -L https://github.com/allure-framework/allure2/releases/latest/download/allure-2.27.0.tgz
+          tar -xzf allure.tgz
+          sudo mv allure-2.27.0/bin/allure /usr/local/bin/allure
+
+      - name: Create allure-results folder
+        run: mkdir -p allure-results
+
+      - name: Fetch BrowserStack Status
+        run: |
+          curl -s "https://lcnc-api.browserstack.com/api/v1/builds/n9x35l1gzckg2qdef2baqj7ymxtmpmqe5ytgxv4s/status" -o response.json
+
+      - name: Convert Response to Allure Format
+        run: |
+          tests=$(jq '.build_details.test_executions' response.json)
+          for i in $(jq '. | to_entries | .[].key' <<< "$tests"); do
+            name=$(jq -r ".[$i].name" <<< "$tests")
+            status=$(jq -r ".[$i].status" <<< "$tests")
+            uuid=$(uuidgen)
+
+            if [ "$status" = "passed" ]; then
+              allure_status="passed"
+            elif [ "$status" = "failed" ]; then
+              allure_status="failed"
+            else
+              allure_status="broken"
+            fi
+
+            cat <<EOF > allure-results/${uuid}-result.json
+{
+  "uuid": "$uuid",
+  "name": "$name",
+  "status": "$allure_status",
+  "stage": "finished",
+  "steps": [],
+  "start": $(date +%s%3N),
+  "stop": $(($(date +%s%3N) + 2000))
+}
+EOF
+          done
+
+      - name: Upload Allure Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: allure-results
+          path: allure-results
+
+      - name: Generate HTML Report
+        run: |
+          allure generate allure-results -o allure-report --clean
+
+      - name: Upload Allure HTML
+        uses: actions/upload-artifact@v3
+        with:
+          name: allure-report
+          path: allure-report
+
+      - name: Deploy Allure Report to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./allure-report

@@ -1,7 +1,7 @@
 name: BrowserStack Status → Allure Report
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch: 
 
 jobs:
   browserstack-status:
